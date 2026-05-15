@@ -3,11 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import Login from './pages/Login'
 import Chat from './pages/Chat'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
-)
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)

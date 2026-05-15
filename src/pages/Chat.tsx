@@ -4,8 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../App'
 import { useChat } from '../hooks/useChat'
 import { glass, colors, font, space, radius } from '../theme'
-
-const API_URL = import.meta.env.VITE_PNEUMA_API_URL
+import { PNEUMA_API_URL as API_URL } from '../config'
 
 function getOrCreateDeviceId(): string {
   const stored = localStorage.getItem('pneuma-device-id')

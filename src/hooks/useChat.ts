@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { Session } from '@supabase/supabase-js'
-
-const API_URL = import.meta.env.VITE_PNEUMA_API_URL
+import { PNEUMA_API_URL as API_URL } from '../config'
 
 export interface Message {
   id: string
