@@ -16,13 +16,21 @@ function getOrCreateDeviceId(): string {
 }
 
 async function ensureDeviceRegistered(deviceId: string, token: string) {
-  if (localStorage.getItem('pneuma-device-registered') === deviceId) return
-  await fetch(`${API_URL}/devices/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ name: 'Web Browser', platform: 'cli', fingerprint: deviceId }),
-  }).catch(() => {/* non-fatal */})
-  localStorage.setItem('pneuma-device-registered', deviceId)
+  if (localStorage.getItem('pneuma-device-reg-v2') === deviceId) return
+  try {
+    const res = await fetch(`${API_URL}/devices/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: 'Web Browser', platform: 'cli', fingerprint: deviceId }),
+    })
+    if (res.ok) {
+      localStorage.setItem('pneuma-device-reg-v2', deviceId)
+    } else {
+      console.error('[device] registration failed:', res.status, await res.text().catch(() => ''))
+    }
+  } catch (e) {
+    console.error('[device] registration error:', e)
+  }
 }
 
 export default function Chat({ session }: { session: Session }) {

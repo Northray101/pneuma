@@ -39,16 +39,17 @@ Deno.serve(async (req) => {
     // Load user profile, device, and memories concurrently
     const [profileRes, deviceRes, memories] = await Promise.all([
       sb.from('user_profiles').select('display_name, timezone').eq('id', user.userId).single(),
-      sb.from('devices').select('platform').eq('id', deviceId).eq('user_id', user.userId).single(),
+      sb.from('devices').select('id, platform').eq('fingerprint', deviceId).eq('user_id', user.userId).single(),
       loadTopMemories(sb, user.userId),
     ])
 
     if (deviceRes.error || !deviceRes.data) {
-      console.error('Device lookup failed:', deviceRes.error?.message, 'deviceId:', deviceId)
-      return error('Device not found or not registered to this user', 404)
+      console.error('Device lookup failed:', deviceRes.error?.message, 'fingerprint:', deviceId)
+      return error('Device not registered — please refresh and try again', 403)
     }
 
     const profile = profileRes.data
+    const dbDeviceId = deviceRes.data.id as string
     const platform = deviceRes.data?.platform as string | undefined
     const hasVision = !!imageUrl
 
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
     if (!convId) {
       const { data: conv, error: convErr } = await sb
         .from('conversations')
-        .insert({ user_id: user.userId, device_id: deviceId })
+        .insert({ user_id: user.userId, device_id: dbDeviceId })
         .select('id')
         .single()
       if (convErr || !conv) {

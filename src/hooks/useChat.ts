@@ -45,8 +45,8 @@ async function* streamChat(
       message:
         res.status === 401
           ? 'Session expired — please sign out and back in.'
-          : res.status === 404
-          ? 'Chat function not deployed yet. Deploy Supabase Edge Functions first.'
+          : res.status === 403
+          ? `Device not registered — please refresh the page. (${text})`
           : `Server error ${res.status}${text ? ': ' + text : ''}`,
     }
     return
