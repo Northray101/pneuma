@@ -8,6 +8,7 @@ on:
 jobs:
   build-mac:
     runs-on: macos-latest
+    environment: Pneuma
     steps:
       - uses: actions/checkout@v4
 

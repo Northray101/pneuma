@@ -24,8 +24,11 @@ export function CommandBar({ onSubmit, disabled = false, placeholder = 'Ask anyt
     <div
       style={{
         padding: theme.spacing.md,
-        borderTop: `1px solid ${theme.colors.border}`,
-        backgroundColor: theme.colors.bg,
+        background: theme.glass.surface,
+        backdropFilter: theme.glass.blurHeavy,
+        WebkitBackdropFilter: theme.glass.blurHeavy,
+        borderTop: `1px solid ${theme.glass.border}`,
+        flexShrink: 0,
       }}
     >
       <textarea
@@ -37,22 +40,32 @@ export function CommandBar({ onSubmit, disabled = false, placeholder = 'Ask anyt
         style={{
           width: '100%',
           resize: 'none',
-          background: theme.colors.surface,
-          border: `1px solid ${theme.colors.border}`,
+          background: theme.glass.inputBg,
+          backdropFilter: theme.glass.blurLight,
+          WebkitBackdropFilter: theme.glass.blurLight,
+          border: `1px solid ${theme.glass.inputBorder}`,
           borderRadius: theme.radius.md,
           color: theme.colors.text,
           fontFamily: theme.font.sans,
           fontSize: theme.font.size.base,
-          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+          padding: `10px ${theme.spacing.md}`,
           outline: 'none',
           boxSizing: 'border-box',
+          transition: 'border-color 0.15s',
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = theme.glass.borderStrong
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = theme.glass.inputBorder
         }}
       />
       <div
         style={{
           fontSize: '11px',
           color: theme.colors.textMuted,
-          marginTop: theme.spacing.xs,
+          marginTop: '6px',
+          opacity: 0.6,
         }}
       >
         Enter to send · Shift+Enter for newline
