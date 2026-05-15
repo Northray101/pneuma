@@ -1,0 +1,12 @@
+name = "pneuma-api"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+SUPABASE_URL = "https://your-project.supabase.co"
+# Set secrets via: wrangler secret put ANTHROPIC_API_KEY
+# Set secrets via: wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+
+[observability]
+enabled = true
