@@ -1,9 +1,21 @@
 import { z } from 'zod'
 
+export const NvidiaModel = z.enum([
+  'meta/llama-3.1-70b-instruct',
+  'meta/llama-3.1-8b-instruct',
+  'nvidia/llama-3.1-nemotron-70b-instruct',
+  'nvidia/llama-3.2-90b-vision-instruct',
+  'meta/llama-3.2-11b-vision-instruct',
+  'nvidia/nemotron-4-340b-instruct',
+])
+export type NvidiaModel = z.infer<typeof NvidiaModel>
+
 export const ChatRequest = z.object({
   conversationId: z.string().uuid().optional(),
   message: z.string().min(1).max(10000),
   deviceId: z.string().uuid(),
+  imageUrl: z.string().url().optional(),
+  model: NvidiaModel.optional(),
 })
 export type ChatRequest = z.infer<typeof ChatRequest>
 

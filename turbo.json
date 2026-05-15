@@ -3,7 +3,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".wrangler/**"]
+      "outputs": ["dist/**"]
     },
     "dev": {
       "cache": false,
