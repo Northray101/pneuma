@@ -4,7 +4,7 @@ import { PNEUMA_API_URL as API_URL } from '../config'
 
 export interface Message {
   id: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'error'
   content: string
 }
 
@@ -19,17 +19,39 @@ async function* streamChat(
   conversationId: string | undefined,
   token: string,
 ): AsyncGenerator<Chunk> {
-  const res = await fetch(`${API_URL}/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ message, deviceId, conversationId }),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ message, deviceId, conversationId }),
+    })
+  } catch (e) {
+    yield { type: 'error', message: 'Could not reach the server. Check your connection.' }
+    return
+  }
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  if (!res.body) throw new Error('No response body')
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    yield {
+      type: 'error',
+      message:
+        res.status === 401
+          ? 'Session expired — please sign out and back in.'
+          : res.status === 404
+          ? 'Chat function not deployed yet. Deploy Supabase Edge Functions first.'
+          : `Server error ${res.status}${text ? ': ' + text : ''}`,
+    }
+    return
+  }
+
+  if (!res.body) {
+    yield { type: 'error', message: 'Empty response from server.' }
+    return
+  }
 
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
@@ -63,11 +85,17 @@ export function useChat(deviceId: string, session: Session) {
 
   const send = useCallback(
     async (content: string) => {
-      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'user', content }])
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: 'user', content },
+      ])
       setStreaming(true)
 
       const assistantId = crypto.randomUUID()
-      setMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: '' }])
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantId, role: 'assistant', content: '' },
+      ])
 
       try {
         for await (const chunk of streamChat(
@@ -79,17 +107,42 @@ export function useChat(deviceId: string, session: Session) {
           if (chunk.type === 'delta') {
             setMessages((prev) =>
               prev.map((m) =>
-                m.id === assistantId ? { ...m, content: m.content + chunk.content } : m,
+                m.id === assistantId
+                  ? { ...m, content: m.content + chunk.content }
+                  : m,
               ),
             )
           }
           if (chunk.type === 'done') {
             setConversationId(chunk.conversationId)
             setMessages((prev) =>
-              prev.map((m) => (m.id === assistantId ? { ...m, id: chunk.messageId } : m)),
+              prev.map((m) =>
+                m.id === assistantId ? { ...m, id: chunk.messageId } : m,
+              ),
+            )
+          }
+          if (chunk.type === 'error') {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, role: 'error', content: chunk.message }
+                  : m,
+              ),
             )
           }
         }
+      } catch (e) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  role: 'error',
+                  content: e instanceof Error ? e.message : 'Something went wrong.',
+                }
+              : m,
+          ),
+        )
       } finally {
         setStreaming(false)
       }

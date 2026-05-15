@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import Login from './pages/Login'
 import Chat from './pages/Chat'
+import SkyBackground from './components/SkyBackground'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -34,13 +35,38 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#0a0a0f',
-          color: '#444',
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: '14px',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          position: 'relative',
         }}
       >
-        ...
+        <SkyBackground />
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            gap: '6px',
+          }}
+        >
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: 'rgba(217,120,64,0.7)',
+                animation: `loadDot 1.2s ease-in-out ${i * 0.2}s infinite`,
+              }}
+            />
+          ))}
+        </div>
+        <style>{`
+          @keyframes loadDot {
+            0%, 80%, 100% { opacity: 0.2; transform: scale(0.75); }
+            40% { opacity: 1; transform: scale(1); }
+          }
+        `}</style>
       </div>
     )
   }

@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { FormEvent } from 'react'
 import { supabase } from '../App'
-import { glass, colors, font, space, radius } from '../theme'
+import SkyBackground from '../components/SkyBackground'
+import { glass, accent, colors, font, space, radius } from '../theme'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const [email, setEmail]   = useState('')
+  const [sent, setSent]     = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError]   = useState('')
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!email.trim()) return
     setLoading(true)
@@ -27,62 +28,87 @@ export default function Login() {
     <div
       style={{
         height: '100vh',
-        background: '#0a0a0f',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
         fontFamily: font.family,
+        position: 'relative',
       }}
     >
-      <div style={orb('#4f8ef7', '50%', '-15%', '-10%')} />
-      <div style={orb('#6366f1', '40%', 'auto', 'auto', '-10%', '-10%')} />
+      <SkyBackground />
 
+      {/* Card */}
       <div
         style={{
-          width: '100%',
-          maxWidth: '360px',
-          margin: space.md,
-          background: glass.surface,
-          backdropFilter: glass.blurHeavy,
-          WebkitBackdropFilter: glass.blurHeavy,
-          border: `1px solid ${glass.borderStrong}`,
-          borderRadius: radius.xl,
-          padding: space.lg,
-          boxShadow: '0 8px 48px rgba(0,0,0,0.4)',
           position: 'relative',
           zIndex: 1,
+          width: '100%',
+          maxWidth: '380px',
+          margin: space.lg,
+          background: glass.surfaceStrong,
+          backdropFilter: glass.blurHeavy,
+          WebkitBackdropFilter: glass.blurHeavy,
+          border: `1px solid ${glass.border}`,
+          borderRadius: radius.xl,
+          padding: space.xl,
+          boxShadow: glass.shadow,
         }}
       >
-        <h1
+        {/* Wordmark */}
+        <div
           style={{
-            fontSize: '22px',
-            fontWeight: 500,
-            color: colors.text,
-            margin: `0 0 ${space.xs}`,
-            letterSpacing: '-0.3px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: space.xs,
+            marginBottom: space.lg,
           }}
         >
-          Pneuma
-        </h1>
-        <p style={{ color: colors.muted, fontSize: font.sm, margin: `0 0 ${space.lg}` }}>
-          Enter your email to get a sign-in link.
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: accent.orange,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontSize: '20px',
+              fontWeight: 600,
+              color: colors.text,
+              letterSpacing: '-0.4px',
+            }}
+          >
+            Pneuma
+          </span>
+        </div>
+
+        <p
+          style={{
+            color: colors.muted,
+            fontSize: font.sm,
+            marginBottom: space.lg,
+            lineHeight: 1.55,
+          }}
+        >
+          Your personal assistant. Enter your email to sign in.
         </p>
 
         {sent ? (
           <div
             style={{
-              background: 'rgba(79,142,247,0.1)',
-              border: `1px solid ${glass.userBorder}`,
+              background: 'rgba(217,120,64,0.10)',
+              border: `1px solid ${accent.orangeBorder}`,
               borderRadius: radius.md,
               padding: space.md,
-              color: colors.text,
+              color: colors.mid,
               fontSize: font.sm,
-              lineHeight: 1.5,
+              lineHeight: 1.6,
             }}
           >
-            Check <strong>{email}</strong> — a sign-in link is on its way.
+            Check <strong style={{ color: colors.text }}>{email}</strong> — your
+            sign-in link is on its way.
           </div>
         ) : (
           <form
@@ -97,71 +123,62 @@ export default function Login() {
               autoFocus
               required
               style={{
-                background: glass.inputBg,
-                border: `1px solid ${glass.inputBorder}`,
+                background: 'rgba(255,255,255,0.60)',
+                border: `1.5px solid rgba(180,210,230,0.60)`,
                 borderRadius: radius.md,
                 color: colors.text,
                 fontFamily: font.family,
                 fontSize: font.base,
-                padding: `10px ${space.md}`,
+                padding: `11px ${space.md}`,
                 outline: 'none',
                 width: '100%',
-                transition: 'border-color 0.15s',
+                transition: 'border-color 0.15s, box-shadow 0.15s',
               }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = glass.borderStrong)}
-              onBlur={(e) => (e.currentTarget.style.borderColor = glass.inputBorder)}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = accent.orange
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${accent.orangeMid}`
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(180,210,230,0.60)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
             />
 
             {error && (
-              <p style={{ color: '#f87171', fontSize: font.sm, margin: 0 }}>{error}</p>
+              <p style={{ color: '#DC2626', fontSize: font.sm, margin: 0 }}>
+                {error}
+              </p>
             )}
 
             <button
               type="submit"
               disabled={loading || !email.trim()}
               style={{
-                background: loading ? glass.surface : glass.userBubble,
-                border: `1px solid ${glass.userBorder}`,
-                backdropFilter: glass.blurLight,
-                WebkitBackdropFilter: glass.blurLight,
+                background: loading ? 'rgba(217,120,64,0.55)' : accent.orange,
+                border: 'none',
                 borderRadius: radius.md,
-                color: loading ? colors.muted : colors.text,
+                color: '#fff',
                 fontFamily: font.family,
                 fontSize: font.base,
-                padding: `10px ${space.md}`,
+                fontWeight: 500,
+                padding: `11px ${space.md}`,
                 cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'background 0.15s',
                 width: '100%',
+                letterSpacing: '0.01em',
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) e.currentTarget.style.background = accent.orangeHover
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) e.currentTarget.style.background = accent.orange
               }}
             >
-              {loading ? 'Sending…' : 'Send link'}
+              {loading ? 'Sending…' : 'Continue with email'}
             </button>
           </form>
         )}
       </div>
     </div>
   )
-}
-
-function orb(
-  color: string,
-  size: string,
-  top: string,
-  left: string,
-  bottom = 'auto',
-  right = 'auto',
-): CSSProperties {
-  return {
-    position: 'fixed',
-    width: size,
-    height: size,
-    background: `radial-gradient(circle, ${color}18 0%, transparent 70%)`,
-    borderRadius: '50%',
-    top,
-    left,
-    bottom,
-    right,
-    pointerEvents: 'none',
-    filter: 'blur(40px)',
-    zIndex: 0,
-  }
 }
