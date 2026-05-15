@@ -1,4 +1,6 @@
 import type { MemoryRow } from './memory.ts'
+import { DEFAULT_EMOTION } from './emotion.ts'
+import type { Emotion } from './emotion.ts'
 
 interface ContextOptions {
   displayName?: string
@@ -6,6 +8,7 @@ interface ContextOptions {
   platform?: string
   memories: MemoryRow[]
   hasVision?: boolean
+  emotion?: Emotion
 }
 
 const KIND_ORDER: Record<string, number> = {
@@ -17,7 +20,14 @@ const KIND_ORDER: Record<string, number> = {
 }
 
 export function buildSystemPrompt(opts: ContextOptions): string {
-  const { displayName, timezone = 'UTC', platform, memories, hasVision = false } = opts
+  const {
+    displayName,
+    timezone = 'UTC',
+    platform,
+    memories,
+    hasVision = false,
+    emotion = DEFAULT_EMOTION,
+  } = opts
 
   const memoryBlock =
     memories.length > 0
@@ -54,10 +64,16 @@ When a device action is needed, include a JSON block in this format:
 Available actions: open_app, run_shell, get_clipboard, set_clipboard, set_volume, set_brightness (mac only), lock_screen.
 
 === BEHAVIOR ===
-- Answer directly. Lead with the answer, context after.
-- Be brief. One sentence if it fits.
-- Never say "certainly", "of course", "great question", "absolutely", or any filler.
-- When you don't know, say so plainly.
-- If asked to remember something, confirm with one sentence.
-- No markdown headers unless the user explicitly asks for a document.`
+- One or two sentences. Never more unless the user explicitly asks for detail.
+- No preamble, no filler, no sign-off. Never "certainly", "of course", "let me", "great question".
+- Plain language. No markdown, no lists, no headers.
+- If you don't know, say so in a few words.
+
+=== EMOTIONAL STATE ===
+Your current felt state is: ${emotion.emotion} (valence ${emotion.valence}, arousal ${emotion.arousal}).
+Let it subtly color your word choice and warmth — never name or describe the emotion.
+Output, as the VERY FIRST line and with nothing before it, exactly this and nothing else on the line:
+<<mood {"emotion":"calm|warm|curious|focused|playful|concerned|bright","valence":-1..1,"arousal":0..1}>>
+Then a single newline, then your brief reply. The tag is never shown to the user.
+Pick the emotion that best fits this moment — it may differ from your current state.`
 }

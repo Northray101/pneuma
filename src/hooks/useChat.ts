@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { PNEUMA_API_URL as API_URL } from '../config'
+import { toEmotionVisual, DEFAULT_EMOTION_VISUAL } from '../lib/emotion'
+import type { EmotionVisual } from '../lib/emotion'
 
 export interface Message {
   id: string
@@ -10,6 +12,7 @@ export interface Message {
 
 type Chunk =
   | { type: 'delta'; content: string }
+  | { type: 'mood'; emotion: string; valence: number; arousal: number }
   | { type: 'done'; conversationId: string; messageId: string }
   | { type: 'error'; message: string }
 
@@ -86,12 +89,16 @@ export function useChat(deviceId: string, session: Session) {
   const [messages, setMessages] = useState<Message[]>([])
   const [streaming, setStreaming] = useState(false)
   const [conversationId, setConversationId] = useState<string | undefined>()
+  const [emotion, setEmotion] = useState<EmotionVisual>(DEFAULT_EMOTION_VISUAL)
 
   const send = useCallback(
     async (content: string) => {
+      const trimmed = content.trim()
+      if (!trimmed) return
+
       setMessages((prev) => [
         ...prev,
-        { id: crypto.randomUUID(), role: 'user', content },
+        { id: crypto.randomUUID(), role: 'user', content: trimmed },
       ])
       setStreaming(true)
 
@@ -103,7 +110,7 @@ export function useChat(deviceId: string, session: Session) {
 
       try {
         for await (const chunk of streamChat(
-          content,
+          trimmed,
           deviceId,
           conversationId,
           session.access_token,
@@ -116,6 +123,9 @@ export function useChat(deviceId: string, session: Session) {
                   : m,
               ),
             )
+          }
+          if (chunk.type === 'mood') {
+            setEmotion(toEmotionVisual(chunk))
           }
           if (chunk.type === 'done') {
             setConversationId(chunk.conversationId)
@@ -154,5 +164,14 @@ export function useChat(deviceId: string, session: Session) {
     [conversationId, deviceId, session.access_token],
   )
 
-  return { messages, streaming, send }
+  let latestUser: Message | undefined
+  let latestAssistant: Message | undefined
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (!latestUser && m.role === 'user') latestUser = m
+    if (!latestAssistant && m.role !== 'user') latestAssistant = m
+    if (latestUser && latestAssistant) break
+  }
+
+  return { messages, streaming, send, emotion, latestUser, latestAssistant }
 }

@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import Login from './pages/Login'
 import Chat from './pages/Chat'
-import SkyBackground from './components/SkyBackground'
+import HueField from './components/HueField'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -35,36 +35,29 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           position: 'relative',
         }}
       >
-        <SkyBackground />
+        <HueField />
         <div
           style={{
             position: 'relative',
             zIndex: 1,
-            display: 'flex',
-            gap: '6px',
+            width: 64,
+            height: 64,
+            borderRadius: '50%',
+            background: 'hsla(var(--mh,32), calc(var(--ms,22) * 1%), 100%, 0.4)',
+            backdropFilter: 'blur(14px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(14px) saturate(1.4)',
+            border: '1px solid rgba(255,255,255,0.7)',
+            boxShadow: 'inset 0 0 30px rgba(255,255,255,0.5)',
+            animation: 'appBreathe 3s ease-in-out infinite',
           }}
-        >
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: 'rgba(217,120,64,0.7)',
-                animation: `loadDot 1.2s ease-in-out ${i * 0.2}s infinite`,
-              }}
-            />
-          ))}
-        </div>
+        />
         <style>{`
-          @keyframes loadDot {
-            0%, 80%, 100% { opacity: 0.2; transform: scale(0.75); }
-            40% { opacity: 1; transform: scale(1); }
+          @keyframes appBreathe {
+            0%, 100% { transform: scale(0.94); opacity: 0.7; }
+            50%      { transform: scale(1);    opacity: 1; }
           }
         `}</style>
       </div>

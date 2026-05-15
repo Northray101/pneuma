@@ -2,6 +2,8 @@ import { corsHeaders, handleCors, error } from '../_shared/cors.ts'
 import { authenticate, getSupabaseAdmin } from '../_shared/auth.ts'
 import { loadTopMemories, extractAndSaveMemories } from '../_shared/memory.ts'
 import { buildSystemPrompt } from '../_shared/context.ts'
+import { DEFAULT_EMOTION, parseMoodTag } from '../_shared/emotion.ts'
+import type { Emotion } from '../_shared/emotion.ts'
 import {
   nvidiaStream,
   buildUserContent,
@@ -71,12 +73,20 @@ Deno.serve(async (req) => {
     // Recent message history for context window
     const { data: history } = await sb
       .from('messages')
-      .select('role, content')
+      .select('role, content, metadata')
       .eq('conversation_id', convId)
       .order('created_at', { ascending: false })
       .limit(20)
 
     const recentMessages = (history ?? []).reverse()
+
+    // Seed the agent's emotion from the most recent assistant turn.
+    const lastAssistant = [...recentMessages]
+      .reverse()
+      .find((m) => m.role === 'assistant')
+    const seedEmotion: Emotion =
+      ((lastAssistant?.metadata as Record<string, unknown> | undefined)
+        ?.emotion as Emotion | undefined) ?? DEFAULT_EMOTION
 
     const systemPrompt = buildSystemPrompt({
       displayName: profile?.display_name ?? undefined,
@@ -84,6 +94,7 @@ Deno.serve(async (req) => {
       platform,
       memories,
       hasVision,
+      emotion: seedEmotion,
     })
 
     // Save user message
@@ -111,10 +122,24 @@ Deno.serve(async (req) => {
         const send = (chunk: unknown) =>
           controller.enqueue(enc.encode(`data: ${JSON.stringify(chunk)}\n\n`))
 
+        // Mood-extraction state machine: withhold only the first physical
+        // line while it's still plausibly the <<mood ...>> tag.
+        let phase: 'BUFFERING' | 'STREAMING' = 'BUFFERING'
+        let headBuf = ''
+        let moodSent = false
+        let finalEmotion: Emotion = seedEmotion
+        const MOOD_PREFIX = '<<mood '
+        const HEAD_CAP = 400
+        const emitMood = (m: Emotion) => {
+          finalEmotion = m
+          send({ type: 'mood', emotion: m.emotion, valence: m.valence, arousal: m.arousal })
+          moodSent = true
+        }
+
         try {
           const nvidiaChunks = await nvidiaStream({
             model: selectedModel,
-            max_tokens: 2048,
+            max_tokens: 220,
             stream: true,
             messages: [
               { role: 'system', content: systemPrompt },
@@ -131,15 +156,59 @@ Deno.serve(async (req) => {
 
           for await (const chunk of nvidiaChunks) {
             const delta = chunk.choices[0]?.delta?.content ?? ''
-            if (delta) {
-              fullReply += delta
-              send({ type: 'delta', content: delta })
-            }
             if (chunk.usage) {
               inputTokens = chunk.usage.prompt_tokens ?? 0
               outputTokens = chunk.usage.completion_tokens ?? 0
             }
+            if (!delta) continue
+
+            if (phase === 'BUFFERING') {
+              headBuf += delta
+              const nl = headBuf.indexOf('\n')
+
+              if (nl === -1) {
+                const t = headBuf.replace(/^\s+/, '')
+                const couldBeTag =
+                  MOOD_PREFIX.startsWith(t.slice(0, MOOD_PREFIX.length)) ||
+                  t.startsWith(MOOD_PREFIX)
+                if (!couldBeTag || headBuf.length > HEAD_CAP) {
+                  emitMood(seedEmotion)
+                  fullReply += headBuf
+                  send({ type: 'delta', content: headBuf })
+                  headBuf = ''
+                  phase = 'STREAMING'
+                }
+                continue
+              }
+
+              const firstLine = headBuf.slice(0, nl)
+              const rest = headBuf.slice(nl + 1)
+              const parsed = parseMoodTag(firstLine)
+              emitMood(parsed ?? seedEmotion)
+              const visibleHead = parsed ? rest : firstLine + '\n' + rest
+              if (visibleHead) {
+                fullReply += visibleHead
+                send({ type: 'delta', content: visibleHead })
+              }
+              headBuf = ''
+              phase = 'STREAMING'
+              continue
+            }
+
+            fullReply += delta
+            send({ type: 'delta', content: delta })
           }
+
+          if (phase === 'BUFFERING') {
+            const parsed = parseMoodTag(headBuf)
+            if (!moodSent) emitMood(parsed ?? seedEmotion)
+            const visible = parsed ? '' : headBuf
+            if (visible) {
+              fullReply += visible
+              send({ type: 'delta', content: visible })
+            }
+          }
+          if (!moodSent) emitMood(seedEmotion)
 
           // Save assistant message
           const { data: assistantMsg, error: assistantMsgErr } = await sb
@@ -150,7 +219,7 @@ Deno.serve(async (req) => {
               role: 'assistant',
               content: fullReply,
               tokens_used: inputTokens + outputTokens,
-              metadata: { model: selectedModel },
+              metadata: { model: selectedModel, emotion: finalEmotion },
             })
             .select('id')
             .single()

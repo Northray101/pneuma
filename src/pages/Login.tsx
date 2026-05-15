@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../App'
-import SkyBackground from '../components/SkyBackground'
-import { glass, accent, colors, font, space, radius } from '../theme'
+import HueField from '../components/HueField'
+import { glass, colors, font, space, radius } from '../theme'
 
 export default function Login() {
-  const [email, setEmail]   = useState('')
-  const [sent, setSent]     = useState(false)
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError]   = useState('')
+  const [error, setError] = useState('')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -35,9 +35,8 @@ export default function Login() {
         position: 'relative',
       }}
     >
-      <SkyBackground />
+      <HueField />
 
-      {/* Card */}
       <div
         style={{
           position: 'relative',
@@ -54,34 +53,17 @@ export default function Login() {
           boxShadow: glass.shadow,
         }}
       >
-        {/* Wordmark */}
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: space.xs,
-            marginBottom: space.lg,
+            fontFamily: font.display,
+            fontSize: '26px',
+            fontWeight: 500,
+            color: colors.text,
+            letterSpacing: '-0.01em',
+            marginBottom: space.sm,
           }}
         >
-          <div
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: accent.orange,
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontSize: '20px',
-              fontWeight: 600,
-              color: colors.text,
-              letterSpacing: '-0.4px',
-            }}
-          >
-            Pneuma
-          </span>
+          Pneuma
         </div>
 
         <p
@@ -89,17 +71,17 @@ export default function Login() {
             color: colors.muted,
             fontSize: font.sm,
             marginBottom: space.lg,
-            lineHeight: 1.55,
+            lineHeight: 1.6,
           }}
         >
-          Your personal assistant. Enter your email to sign in.
+          A presence that remembers. Enter your email to begin.
         </p>
 
         {sent ? (
           <div
             style={{
-              background: 'rgba(217,120,64,0.10)',
-              border: `1px solid ${accent.orangeBorder}`,
+              background: 'rgba(255,255,255,0.5)',
+              border: `1px solid ${glass.borderSubtle}`,
               borderRadius: radius.md,
               padding: space.md,
               color: colors.mid,
@@ -123,8 +105,8 @@ export default function Login() {
               autoFocus
               required
               style={{
-                background: 'rgba(255,255,255,0.60)',
-                border: `1.5px solid rgba(180,210,230,0.60)`,
+                background: 'rgba(255,255,255,0.6)',
+                border: `1.5px solid ${glass.borderSubtle}`,
                 borderRadius: radius.md,
                 color: colors.text,
                 fontFamily: font.family,
@@ -132,20 +114,18 @@ export default function Login() {
                 padding: `11px ${space.md}`,
                 outline: 'none',
                 width: '100%',
-                transition: 'border-color 0.15s, box-shadow 0.15s',
+                transition: 'border-color 0.15s',
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = accent.orange
-                e.currentTarget.style.boxShadow = `0 0 0 3px ${accent.orangeMid}`
+                e.currentTarget.style.borderColor = colors.muted
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(180,210,230,0.60)'
-                e.currentTarget.style.boxShadow = 'none'
+                e.currentTarget.style.borderColor = glass.borderSubtle
               }}
             />
 
             {error && (
-              <p style={{ color: '#DC2626', fontSize: font.sm, margin: 0 }}>
+              <p style={{ color: colors.error, fontSize: font.sm, margin: 0 }}>
                 {error}
               </p>
             )}
@@ -154,7 +134,7 @@ export default function Login() {
               type="submit"
               disabled={loading || !email.trim()}
               style={{
-                background: loading ? 'rgba(217,120,64,0.55)' : accent.orange,
+                background: loading ? colors.muted : colors.text,
                 border: 'none',
                 borderRadius: radius.md,
                 color: '#fff',
@@ -165,13 +145,6 @@ export default function Login() {
                 cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'background 0.15s',
                 width: '100%',
-                letterSpacing: '0.01em',
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) e.currentTarget.style.background = accent.orangeHover
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) e.currentTarget.style.background = accent.orange
               }}
             >
               {loading ? 'Sending…' : 'Continue with email'}
