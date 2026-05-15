@@ -3,7 +3,10 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM"],
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "types": ["vite/client"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
   "include": ["src", "electron.vite.config.ts"]
 }

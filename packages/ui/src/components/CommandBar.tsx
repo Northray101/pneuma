@@ -1,4 +1,4 @@
-import React, { type KeyboardEvent, useRef } from 'react'
+import { type KeyboardEvent, useRef } from 'react'
 import { theme } from '../theme'
 
 interface Props {

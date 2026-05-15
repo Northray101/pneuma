@@ -1,4 +1,3 @@
-import React from 'react'
 import type { MessageRole } from '@pneuma/types'
 import { theme } from '../theme'
 
