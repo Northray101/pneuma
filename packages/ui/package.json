@@ -16,6 +16,9 @@
     "typecheck": "tsc --noEmit",
     "dev": "tsc --watch"
   },
+  "dependencies": {
+    "@pneuma/types": "workspace:*"
+  },
   "peerDependencies": {
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
