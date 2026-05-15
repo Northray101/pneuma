@@ -30,7 +30,11 @@ async function* streamChat(
       body: JSON.stringify({ message, deviceId, conversationId }),
     })
   } catch (e) {
-    yield { type: 'error', message: 'Could not reach the server. Check your connection.' }
+    const msg = e instanceof TypeError && String(e).includes('fetch')
+      ? `Network error (CORS or connection): ${String(e)}`
+      : `Fetch failed: ${String(e)}`
+    console.error('[useChat] fetch threw:', e)
+    yield { type: 'error', message: msg }
     return
   }
 
