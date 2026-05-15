@@ -1,0 +1,36 @@
+name: Deploy Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+      - 'packages/types/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy all Edge Functions
+        run: |
+          supabase functions deploy chat     --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          supabase functions deploy memory   --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          supabase functions deploy sync     --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          supabase functions deploy devices  --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Set NVIDIA secrets
+        run: |
+          supabase secrets set \
+            NVIDIA_API_KEY=${{ secrets.NVIDIA_API_KEY }} \
+            NVIDIA_API_KEY_BACKUP=${{ secrets.NVIDIA_API_KEY_BACKUP }} \
+            --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

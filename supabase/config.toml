@@ -20,3 +20,15 @@ site_url = "http://localhost:3000"
 additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
 enable_signup = true
+
+[functions.chat]
+verify_jwt = true
+
+[functions.memory]
+verify_jwt = true
+
+[functions.sync]
+verify_jwt = true
+
+[functions.devices]
+verify_jwt = true

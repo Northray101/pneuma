@@ -24,8 +24,9 @@ jobs:
 
       - run: pnpm turbo typecheck lint
 
-      - name: Wrangler dry-run
-        working-directory: services/api
-        run: pnpm exec wrangler deploy --dry-run
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Validate Edge Functions (Deno check)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - run: deno check supabase/functions/**/*.ts
