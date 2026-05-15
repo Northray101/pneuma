@@ -18,8 +18,8 @@ port = 54323
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000", "https://northray101.github.io/pneuma/"]
+site_url = "https://northray101.github.io/pneuma/"
+additional_redirect_urls = ["https://northray101.github.io/pneuma/", "http://localhost:5173"]
 jwt_expiry = 3600
 enable_signup = true
 
