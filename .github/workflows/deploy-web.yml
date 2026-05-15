@@ -32,7 +32,7 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install
 
       - name: Build web app
         run: pnpm --filter @pneuma/web build
