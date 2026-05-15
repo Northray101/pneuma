@@ -8,7 +8,8 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "setup-secrets": "node scripts/setup-secrets.mjs"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",
@@ -16,6 +17,7 @@
     "eslint": "^9.0.0",
     "prettier": "^3.3.0",
     "turbo": "^2.3.0",
+    "tweetsodium": "^0.0.5",
     "typescript": "^5.6.0"
   }
 }
