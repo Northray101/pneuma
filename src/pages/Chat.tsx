@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../App'
 import { useChat } from '../hooks/useChat'
 import { useVoiceInput } from '../hooks/useVoiceInput'
+import { useTTS } from '../hooks/useTTS'
 import HueField from '../components/HueField'
 import Orb from '../components/Orb'
 import type { OrbState } from '../components/Orb'
@@ -78,6 +79,7 @@ function useHueTween(target: EmotionVisual, el: HTMLElement | null) {
 export default function Chat({ session }: { session: Session }) {
   const [deviceId] = useState(getOrCreateDeviceId)
   const [ready, setReady] = useState(false)
+  const tts = useTTS(session.access_token)
   const { streaming, send, emotion, latestUser, latestAssistant } = useChat(
     deviceId,
     session,
@@ -93,6 +95,16 @@ export default function Chat({ session }: { session: Session }) {
     ensureDeviceRegistered(deviceId, session.access_token).then(() => setReady(true))
   }, [deviceId, session.access_token])
 
+  // Auto-speak assistant response when streaming finishes
+  const prevStreamingRef = useRef(false)
+  useEffect(() => {
+    if (prevStreamingRef.current && !streaming) {
+      const text = latestAssistant?.role === 'assistant' ? latestAssistant.content : ''
+      if (text) tts.speak(text)
+    }
+    prevStreamingRef.current = streaming
+  }, [streaming]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const assistantIsError = latestAssistant?.role === 'error'
   const assistantText = latestAssistant && latestAssistant.role !== 'user'
     ? latestAssistant.content
@@ -101,6 +113,7 @@ export default function Chat({ session }: { session: Session }) {
   let orbState: OrbState = 'idle'
   if (streaming && assistantText === '' && !assistantIsError) orbState = 'thinking'
   else if (streaming && assistantText !== '') orbState = 'speaking'
+  else if (tts.speaking) orbState = 'speaking'
   else if (voice.listening) orbState = 'listening'
 
   const hasConversation = !!latestUser
@@ -199,7 +212,7 @@ export default function Chat({ session }: { session: Session }) {
         }}
       >
         <InputBar
-          onSubmit={send}
+          onSubmit={(msg) => { tts.stop(); send(msg) }}
           disabled={!ready || streaming}
           voice={voice}
         />
