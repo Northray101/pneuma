@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../App'
 import { useChat } from '../hooks/useChat'
 import { useVoiceInput } from '../hooks/useVoiceInput'
-import { useTTS } from '../hooks/useTTS'
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis'
 import HueField from '../components/HueField'
 import Orb from '../components/Orb'
 import type { OrbState } from '../components/Orb'
@@ -79,7 +79,7 @@ function useHueTween(target: EmotionVisual, el: HTMLElement | null) {
 export default function Chat({ session }: { session: Session }) {
   const [deviceId] = useState(getOrCreateDeviceId)
   const [ready, setReady] = useState(false)
-  const tts = useTTS(session.access_token)
+  const speech = useSpeechSynthesis()
   const { streaming, send, emotion, latestUser, latestAssistant } = useChat(
     deviceId,
     session,
@@ -95,26 +95,38 @@ export default function Chat({ session }: { session: Session }) {
     ensureDeviceRegistered(deviceId, session.access_token).then(() => setReady(true))
   }, [deviceId, session.access_token])
 
-  // Auto-speak assistant response when streaming finishes
+  // Speak sentence chunks as they stream in — voice leads the text reveal
+  const prevContentRef = useRef('')
+  useEffect(() => {
+    const content =
+      latestAssistant?.role === 'assistant' ? latestAssistant.content : ''
+    if (content && content.length > prevContentRef.current.length) {
+      speech.queueChunk(content.slice(prevContentRef.current.length))
+    }
+    prevContentRef.current = content
+  }, [latestAssistant?.content]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Flush any incomplete sentence when streaming ends
   const prevStreamingRef = useRef(false)
   useEffect(() => {
-    if (prevStreamingRef.current && !streaming) {
-      const text = latestAssistant?.role === 'assistant' ? latestAssistant.content : ''
-      if (text) tts.speak(text)
-    }
+    if (prevStreamingRef.current && !streaming) speech.flushRemaining()
     prevStreamingRef.current = streaming
   }, [streaming]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset speech buffer when a new user message starts
+  useEffect(() => {
+    if (latestAssistant?.role === 'assistant' && latestAssistant.content === '') {
+      prevContentRef.current = ''
+    }
+  }, [latestAssistant?.id])
+
   const assistantIsError = latestAssistant?.role === 'error'
-  const assistantText = latestAssistant && latestAssistant.role !== 'user'
-    ? latestAssistant.content
-    : ''
+  const assistantText =
+    latestAssistant && latestAssistant.role !== 'user' ? latestAssistant.content : ''
 
   let orbState: OrbState = 'idle'
   if (streaming && assistantText === '' && !assistantIsError) orbState = 'thinking'
-  else if (streaming && assistantText !== '') orbState = 'speaking'
-  else if (tts.loading) orbState = 'thinking'  // fetching audio — same as thinking
-  else if (tts.speaking) orbState = 'speaking'
+  else if (streaming || speech.speaking) orbState = 'speaking'
   else if (voice.listening) orbState = 'listening'
 
   const hasConversation = !!latestUser
@@ -213,7 +225,7 @@ export default function Chat({ session }: { session: Session }) {
         }}
       >
         <InputBar
-          onSubmit={(msg) => { tts.stop(); send(msg) }}
+          onSubmit={(msg) => { speech.stop(); send(msg) }}
           disabled={!ready || streaming}
           voice={voice}
         />
