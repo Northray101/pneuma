@@ -9,6 +9,7 @@ interface ContextOptions {
   memories: MemoryRow[]
   hasVision?: boolean
   emotion?: Emotion
+  liveContext?: string
 }
 
 const KIND_ORDER: Record<string, number> = {
@@ -27,6 +28,7 @@ export function buildSystemPrompt(opts: ContextOptions): string {
     memories,
     hasVision = false,
     emotion = DEFAULT_EMOTION,
+    liveContext,
   } = opts
 
   const memoryBlock =
@@ -75,5 +77,5 @@ Let it subtly color your word choice and warmth — never name or describe the e
 Output, as the VERY FIRST line and with nothing before it, exactly this and nothing else on the line:
 <<mood {"emotion":"calm|warm|curious|focused|playful|concerned|bright","valence":-1..1,"arousal":0..1}>>
 Then a single newline, then your brief reply. The tag is never shown to the user.
-Pick the emotion that best fits this moment — it may differ from your current state.`
+Pick the emotion that best fits this moment — it may differ from your current state.${liveContext ? `\n\n=== LIVE CONTEXT ===\n${liveContext}\nUse the above if relevant to the user's message; treat it as approximate.` : ''}`
 }

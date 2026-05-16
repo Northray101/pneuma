@@ -113,6 +113,7 @@ export default function Chat({ session }: { session: Session }) {
   let orbState: OrbState = 'idle'
   if (streaming && assistantText === '' && !assistantIsError) orbState = 'thinking'
   else if (streaming && assistantText !== '') orbState = 'speaking'
+  else if (tts.loading) orbState = 'thinking'  // fetching audio — same as thinking
   else if (tts.speaking) orbState = 'speaking'
   else if (voice.listening) orbState = 'listening'
 

@@ -4,17 +4,21 @@ import { PNEUMA_API_URL as API_URL } from '../config'
 export function useTTS(token: string) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const urlRef = useRef<string | null>(null)
-  const [speaking, setSpeaking] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const [loading, setLoading] = useState(false)   // fetching audio from server
+  const [speaking, setSpeaking] = useState(false) // audio is playing
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
+      abortRef.current?.abort()
       if (audioRef.current) audioRef.current.pause()
       if (urlRef.current) URL.revokeObjectURL(urlRef.current)
     }
   }, [])
 
   const stop = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.onended = null
@@ -25,6 +29,7 @@ export function useTTS(token: string) {
       URL.revokeObjectURL(urlRef.current)
       urlRef.current = null
     }
+    setLoading(false)
     setSpeaking(false)
   }, [])
 
@@ -33,7 +38,10 @@ export function useTTS(token: string) {
       if (!text.trim()) return
       stop()
 
-      setSpeaking(true)
+      const ac = new AbortController()
+      abortRef.current = ac
+      setLoading(true)
+
       try {
         const res = await fetch(`${API_URL}/tts`, {
           method: 'POST',
@@ -42,16 +50,22 @@ export function useTTS(token: string) {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ text }),
+          signal: ac.signal,
         })
 
         if (!res.ok) {
-          setSpeaking(false)
+          setLoading(false)
           return
         }
 
         const blob = await res.blob()
+
+        if (ac.signal.aborted) return
+
         const url = URL.createObjectURL(blob)
         urlRef.current = url
+        setLoading(false)
+        setSpeaking(true)
 
         const audio = new Audio(url)
         audioRef.current = audio
@@ -70,12 +84,14 @@ export function useTTS(token: string) {
         }
 
         await audio.play()
-      } catch {
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return
+        setLoading(false)
         setSpeaking(false)
       }
     },
     [token, stop],
   )
 
-  return { speaking, speak, stop }
+  return { loading, speaking, speak, stop }
 }

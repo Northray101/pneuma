@@ -28,13 +28,28 @@ export function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n))
 }
 
-// Parses a single line of the form: <<mood {"emotion":"curious","valence":0.4,"arousal":0.6}>>
-// Returns a validated, clamped Emotion or null if the line isn't a valid tag.
+// Strict parse: expects exactly <<mood {...}>> on its own line with nothing after.
 export function parseMoodTag(line: string): Emotion | null {
-  const m = line.match(/^\s*<<mood\s+(\{.*\})\s*>>\s*$/)
+  const m = line.match(/^\s*<<mood\s+(\{[^}]+\})\s*>+\s*$/)
   if (!m) return null
+  return _parseEmotionJson(m[1])
+}
+
+// Flexible extract: handles single >, no trailing newline, or text on the same line.
+// Returns { emotion, rest } where rest is any content after the closing > (may be empty).
+export function extractMoodFromBuffer(
+  buf: string,
+): { emotion: Emotion; rest: string } | null {
+  const m = buf.match(/^\s*<<mood\s+(\{[^}]+\})\s*>+\s*\n?([\s\S]*)$/)
+  if (!m) return null
+  const emotion = _parseEmotionJson(m[1])
+  if (!emotion) return null
+  return { emotion, rest: m[2] ?? '' }
+}
+
+function _parseEmotionJson(json: string): Emotion | null {
   try {
-    const o = JSON.parse(m[1]) as Record<string, unknown>
+    const o = JSON.parse(json) as Record<string, unknown>
     const name = String(o.emotion ?? '').toLowerCase()
     if (!(MOOD_NAMES as readonly string[]).includes(name)) return null
     return {

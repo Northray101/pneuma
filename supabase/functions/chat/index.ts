@@ -2,8 +2,9 @@ import { corsHeaders, handleCors, error } from '../_shared/cors.ts'
 import { authenticate, getSupabaseAdmin } from '../_shared/auth.ts'
 import { loadTopMemories, extractAndSaveMemories } from '../_shared/memory.ts'
 import { buildSystemPrompt } from '../_shared/context.ts'
-import { DEFAULT_EMOTION, parseMoodTag } from '../_shared/emotion.ts'
+import { DEFAULT_EMOTION, extractMoodFromBuffer } from '../_shared/emotion.ts'
 import type { Emotion } from '../_shared/emotion.ts'
+import { buildLiveContext } from '../_shared/tools.ts'
 import {
   nvidiaStream,
   buildUserContent,
@@ -37,6 +38,15 @@ Deno.serve(async (req) => {
     if (!message || !deviceId) return error('message and deviceId are required')
 
     const sb = getSupabaseAdmin()
+
+    // Get client IP for live context (weather / search)
+    const clientIp =
+      (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ||
+      req.headers.get('x-real-ip') ||
+      ''
+
+    // Start live context fetch (runs concurrently with DB queries below)
+    const liveContextPromise = buildLiveContext(message, clientIp)
 
     // Load user profile, device, and memories concurrently
     const [profileRes, deviceRes, memories] = await Promise.all([
@@ -88,6 +98,7 @@ Deno.serve(async (req) => {
       ((lastAssistant?.metadata as Record<string, unknown> | undefined)
         ?.emotion as Emotion | undefined) ?? DEFAULT_EMOTION
 
+    const liveContext = await liveContextPromise
     const systemPrompt = buildSystemPrompt({
       displayName: profile?.display_name ?? undefined,
       timezone: profile?.timezone ?? 'UTC',
@@ -95,6 +106,7 @@ Deno.serve(async (req) => {
       memories,
       hasVision,
       emotion: seedEmotion,
+      liveContext: liveContext || undefined,
     })
 
     // Save user message
@@ -122,8 +134,10 @@ Deno.serve(async (req) => {
         const send = (chunk: unknown) =>
           controller.enqueue(enc.encode(`data: ${JSON.stringify(chunk)}\n\n`))
 
-        // Mood-extraction state machine: withhold only the first physical
-        // line while it's still plausibly the <<mood ...>> tag.
+        // Mood-extraction state machine.
+        // Buffers the opening of the stream until a complete <<mood ...>> tag
+        // is found (or ruled out). Handles: single >, no trailing newline,
+        // text on the same line — all edge cases the model commonly produces.
         let phase: 'BUFFERING' | 'STREAMING' = 'BUFFERING'
         let headBuf = ''
         let moodSent = false
@@ -164,34 +178,35 @@ Deno.serve(async (req) => {
 
             if (phase === 'BUFFERING') {
               headBuf += delta
-              const nl = headBuf.indexOf('\n')
 
-              if (nl === -1) {
-                const t = headBuf.replace(/^\s+/, '')
-                const couldBeTag =
-                  MOOD_PREFIX.startsWith(t.slice(0, MOOD_PREFIX.length)) ||
-                  t.startsWith(MOOD_PREFIX)
-                if (!couldBeTag || headBuf.length > HEAD_CAP) {
-                  emitMood(seedEmotion)
-                  fullReply += headBuf
-                  send({ type: 'delta', content: headBuf })
-                  headBuf = ''
-                  phase = 'STREAMING'
+              // Try flexible extraction: works even with single >, no newline, or
+              // text immediately following the closing >
+              const extracted = extractMoodFromBuffer(headBuf)
+              if (extracted) {
+                emitMood(extracted.emotion)
+                if (extracted.rest) {
+                  fullReply += extracted.rest
+                  send({ type: 'delta', content: extracted.rest })
                 }
+                headBuf = ''
+                phase = 'STREAMING'
                 continue
               }
 
-              const firstLine = headBuf.slice(0, nl)
-              const rest = headBuf.slice(nl + 1)
-              const parsed = parseMoodTag(firstLine)
-              emitMood(parsed ?? seedEmotion)
-              const visibleHead = parsed ? rest : firstLine + '\n' + rest
-              if (visibleHead) {
-                fullReply += visibleHead
-                send({ type: 'delta', content: visibleHead })
+              // Flush if the buffer clearly can't become a mood tag
+              const trimmed = headBuf.trimStart()
+              const onWayToTag =
+                trimmed.length === 0 ||
+                MOOD_PREFIX.startsWith(trimmed.slice(0, Math.min(trimmed.length, MOOD_PREFIX.length))) ||
+                trimmed.startsWith(MOOD_PREFIX)
+
+              if (!onWayToTag || headBuf.length > HEAD_CAP) {
+                emitMood(seedEmotion)
+                fullReply += headBuf
+                send({ type: 'delta', content: headBuf })
+                headBuf = ''
+                phase = 'STREAMING'
               }
-              headBuf = ''
-              phase = 'STREAMING'
               continue
             }
 
@@ -200,9 +215,10 @@ Deno.serve(async (req) => {
           }
 
           if (phase === 'BUFFERING') {
-            const parsed = parseMoodTag(headBuf)
-            if (!moodSent) emitMood(parsed ?? seedEmotion)
-            const visible = parsed ? '' : headBuf
+            // Stream ended while still buffering — try one last extraction
+            const extracted = extractMoodFromBuffer(headBuf)
+            if (!moodSent) emitMood(extracted?.emotion ?? seedEmotion)
+            const visible = extracted ? extracted.rest : headBuf
             if (visible) {
               fullReply += visible
               send({ type: 'delta', content: visible })
